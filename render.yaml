@@ -1,13 +1,15 @@
 services:
   - type: web
-    name: expense-tracker
+    name: expense-tracker-backend
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+
+    buildCommand: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
+
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
-    disk:
-      name: sqlite-data
-      mountPath: /data
-      sizeGB: 1
+        value: 3.11.9
