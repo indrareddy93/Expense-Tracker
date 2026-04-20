@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Iconify Web Component (no npm, no build step) -->
+  <script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    .input-base {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      color: #1e293b;
+      border-radius: 0.5rem;
+      padding: 0.575rem 0.875rem;
+      font-size: 0.875rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .input-base:focus {
+      border-color: #10b981;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+    }
+    .input-base::placeholder { color: #94a3b8; }
+
+    .btn-primary {
+      background: #10b981;
+      color: #fff;
+      font-weight: 700;
+      border-radius: 0.5rem;
+      padding: 0.575rem 1.4rem;
+      font-size: 0.875rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      box-shadow: 0 1px 2px rgba(16,185,129,0.25);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+    }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-ghost {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      color: #475569;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.15s;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .btn-ghost:hover { background: #e2e8f0; color: #1e293b; }
+    .btn-ghost.active { background: #ecfdf5; border-color: #6ee7b7; color: #059669; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .row-enter { animation: rowIn 0.22s ease forwards; }
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-5px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      padding: 0.75rem 1.1rem; border-radius: 0.625rem;
+      font-size: 0.85rem; font-weight: 600;
+      transform: translateY(120%);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 999; max-width: 300px;
+      display: flex; align-items: center; gap: 0.5rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+    #toast.show { transform: translateY(0); }
+    #toast.success { background: #ecfdf5; color: #065f46; border: 1.5px solid #6ee7b7; }
+    #toast.error   { background: #fff1f2; color: #9f1239; border: 1.5px solid #fecdd3; }
+
+    iconify-icon { display: inline-flex; }
+  </style>
+</head>
+
+<body class="min-h-screen antialiased">
+
+  <!-- Navbar -->
+  <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-sm">
+          <iconify-icon icon="lucide:wallet" width="16" style="color:#fff;"></iconify-icon>
+        </span>
+        <span class="text-base font-bold text-slate-800 tracking-tight">Expense Tracker</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+        <iconify-icon icon="lucide:database" width="12"></iconify-icon>
+        FastAPI · SQLite
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-5xl mx-auto px-4 py-8">
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+      <div class="card px-5 py-4 flex items-center justify-between" style="border-left:4px solid #10b981;">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Visible Total</p>
+          <p id="total-display" class="text-2xl font-bold font-mono text-emerald-600">₹0.00</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+          <iconify-icon icon="lucide:indian-rupee" width="20" style="color:#10b981;"></iconify-icon>
+        </div>
+      </div>
+
+      <div class="card px-5 py-4 flex items-center justify-between" style="border-left:4px solid #6366f1;">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Entries</p>
+          <p id="count-display" class="text-2xl font-bold font-mono text-indigo-600">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+          <iconify-icon icon="lucide:list-checks" width="20" style="color:#6366f1;"></iconify-icon>
+        </div>
+      </div>
+
+      <div class="card px-5 py-4 flex items-center justify-between" style="border-left:4px solid #f59e0b;">
+        <div>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Highest</p>
+          <p id="max-display" class="text-2xl font-bold font-mono text-amber-600">₹0.00</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+          <iconify-icon icon="lucide:trending-up" width="20" style="color:#f59e0b;"></iconify-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Expense Form -->
+    <section class="card p-6 mb-6">
+      <h2 class="text-xs font-bold text-slate-500 mb-5 flex items-center gap-2 uppercase tracking-widest">
+        <iconify-icon icon="lucide:plus-circle" width="14" style="color:#10b981;"></iconify-icon>
+        Add New Expense
+      </h2>
+
+      <div id="form-error"
+           class="hidden mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 items-center gap-2">
+        <iconify-icon icon="lucide:alert-circle" width="15" style="flex-shrink:0;"></iconify-icon>
+        <span id="form-error-text"></span>
+      </div>
+
+      <form id="expense-form" autocomplete="off">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5" for="f-amount">Amount (₹)</label>
+            <div class="relative">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <iconify-icon icon="lucide:indian-rupee" width="13"></iconify-icon>
+              </span>
+              <input id="f-amount" type="number" min="0.01" step="0.01" placeholder="0.00"
+                     class="input-base pl-7" required />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5" for="f-category">Category</label>
+            <div class="relative">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <iconify-icon icon="lucide:tag" width="13"></iconify-icon>
+              </span>
+              <input id="f-category" type="text" placeholder="Food, Travel, Utilities…"
+                     class="input-base pl-7" required list="cat-list" />
+              <datalist id="cat-list"></datalist>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5" for="f-description">Description</label>
+            <div class="relative">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <iconify-icon icon="lucide:pencil-line" width="13"></iconify-icon>
+              </span>
+              <input id="f-description" type="text" placeholder="Brief note"
+                     class="input-base pl-7" required />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5" for="f-date">Date</label>
+            <div class="relative">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <iconify-icon icon="lucide:calendar" width="13"></iconify-icon>
+              </span>
+              <input id="f-date" type="date" class="input-base pl-7" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit" id="submit-btn" class="btn-primary">
+            <iconify-icon id="submit-icon" icon="lucide:plus" width="15"></iconify-icon>
+            <span id="submit-label">Add Expense</span>
+            <span id="submit-spinner" class="spinner hidden"></span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <div class="relative flex-1 min-w-[180px]">
+        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+          <iconify-icon icon="lucide:filter" width="13"></iconify-icon>
+        </span>
+        <select id="filter-category" class="input-base pl-8 cursor-pointer">
+          <option value="">All categories</option>
+        </select>
+      </div>
+      <button id="sort-btn" onclick="toggleSort()" class="btn-ghost">
+        <iconify-icon id="sort-icon" icon="lucide:arrow-up-down" width="14"></iconify-icon>
+        <span id="sort-label">Oldest first</span>
+      </button>
+      <button onclick="loadExpenses()" class="btn-ghost">
+        <iconify-icon icon="lucide:refresh-cw" width="14"></iconify-icon>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Table Card -->
+    <section class="card overflow-hidden">
+      <div class="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+          <iconify-icon icon="lucide:receipt" width="13"></iconify-icon>
+          Expenses
+        </span>
+        <span id="table-count-badge" class="text-xs bg-slate-100 text-slate-500 font-semibold px-2.5 py-0.5 rounded-full"></span>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading-state" class="flex items-center justify-center py-16 gap-3 text-slate-400">
+        <div class="spinner" style="border-color:#e2e8f0; border-top-color:#10b981; width:18px; height:18px;"></div>
+        <span class="text-sm font-medium">Loading expenses…</span>
+      </div>
+
+      <!-- Empty -->
+      <div id="empty-state" class="hidden flex-col items-center justify-center py-16 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <iconify-icon icon="lucide:inbox" width="28" style="color:#94a3b8;"></iconify-icon>
+        </div>
+        <p class="text-slate-600 font-semibold">No expenses found</p>
+        <p class="text-slate-400 text-sm mt-1">Add your first expense using the form above.</p>
+      </div>
+
+      <!-- Error -->
+      <div id="error-state" class="hidden items-center justify-center py-16 gap-3 text-red-400">
+        <iconify-icon icon="lucide:wifi-off" width="22"></iconify-icon>
+        <span class="text-sm font-medium">Failed to load. Check your connection and refresh.</span>
+      </div>
+
+      <!-- Table -->
+      <div id="table-wrapper" class="hidden overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100 text-xs text-slate-500 uppercase tracking-wider">
+              <th class="text-left px-6 py-3 font-semibold">Date</th>
+              <th class="text-left px-6 py-3 font-semibold">Category</th>
+              <th class="text-left px-6 py-3 font-semibold">Description</th>
+              <th class="text-right px-6 py-3 font-semibold">Amount</th>
+              <th class="w-12 px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody id="expense-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="text-center text-xs text-slate-400 mt-6 flex items-center justify-center gap-1.5">
+      <iconify-icon icon="lucide:shield-check" width="12"></iconify-icon>
+      Integer cents · Idempotent POST · UUID keys · FastAPI + SQLite
+    </p>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+  let sortDesc = false;
+  let expenses = [];
+
+  const CAT_COLOURS = [
+    'bg-violet-100 text-violet-700',
+    'bg-sky-100 text-sky-700',
+    'bg-amber-100 text-amber-700',
+    'bg-rose-100 text-rose-700',
+    'bg-teal-100 text-teal-700',
+    'bg-orange-100 text-orange-700',
+    'bg-pink-100 text-pink-700',
+    'bg-indigo-100 text-indigo-700',
+    'bg-lime-100 text-lime-700',
+    'bg-cyan-100 text-cyan-700',
+  ];
+
+  function catColour(cat) {
+    let h = 0;
+    for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) | 0;
+    return CAT_COLOURS[Math.abs(h) % CAT_COLOURS.length];
+  }
+
+  const CAT_ICONS = {
+    food:'lucide:utensils', restaurant:'lucide:utensils', lunch:'lucide:utensils', dinner:'lucide:utensils',
+    travel:'lucide:plane', transport:'lucide:bus', cab:'lucide:car', auto:'lucide:car',
+    shopping:'lucide:shopping-bag', clothes:'lucide:shirt',
+    utilities:'lucide:zap', electricity:'lucide:zap', water:'lucide:droplets',
+    entertainment:'lucide:clapperboard', movie:'lucide:clapperboard',
+    health:'lucide:heart-pulse', medical:'lucide:stethoscope',
+    education:'lucide:book-open', books:'lucide:book-open',
+    rent:'lucide:home', housing:'lucide:home',
+  };
+
+  function catIcon(cat) {
+    const key = cat.toLowerCase().trim();
+    for (const [k, v] of Object.entries(CAT_ICONS)) {
+      if (key.includes(k)) return v;
+    }
+    return 'lucide:tag';
+  }
+
+  function formatCents(cents) {
+    return '₹' + (cents / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function uuid4() {
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    const icon = type === 'success' ? 'lucide:check-circle-2' : 'lucide:trash-2';
+    t.innerHTML = `<iconify-icon icon="${icon}" width="16"></iconify-icon> ${msg}`;
+    t.className = `show ${type}`;
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => { t.className = type; }, 3000);
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  async function loadExpenses() {
+    setTableState('loading');
+    const cat  = document.getElementById('filter-category').value;
+    const sort = sortDesc ? 'date_desc' : 'date_asc';
+    const qs   = new URLSearchParams({ sort });
+    if (cat) qs.set('category', cat);
+    try {
+      const res = await fetch(`/expenses?${qs}`);
+      if (!res.ok) throw new Error();
+      expenses = await res.json();
+      renderTable(expenses);
+      updateStats(expenses);
+      refreshCategoryOptions(expenses);
+    } catch {
+      setTableState('error');
+    }
+  }
+
+  async function submitExpense(e) {
+    e.preventDefault();
+    const btn     = document.getElementById('submit-btn');
+    const label   = document.getElementById('submit-label');
+    const spinner = document.getElementById('submit-spinner');
+    const sIcon   = document.getElementById('submit-icon');
+    const errBox  = document.getElementById('form-error');
+
+    btn.disabled = true;
+    label.textContent = 'Adding…';
+    spinner.classList.remove('hidden');
+    sIcon.classList.add('hidden');
+    errBox.classList.remove('flex');
+    errBox.classList.add('hidden');
+
+    const amountRaw = parseFloat(document.getElementById('f-amount').value);
+    if (isNaN(amountRaw) || amountRaw <= 0) {
+      showFormError('Amount must be a positive number.'); resetBtn(); return;
+    }
+
+    const payload = {
+      amount:      Math.round(amountRaw * 100),
+      category:    document.getElementById('f-category').value.trim(),
+      description: document.getElementById('f-description').value.trim(),
+      date:        document.getElementById('f-date').value,
+    };
+
+    try {
+      const res = await fetch('/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': uuid4() },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `HTTP ${res.status}`);
+      }
+      document.getElementById('expense-form').reset();
+      setTodayDate();
+      showToast('Expense added successfully');
+      await loadExpenses();
+    } catch (err) {
+      showFormError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      resetBtn();
+    }
+
+    function resetBtn() {
+      btn.disabled = false;
+      label.textContent = 'Add Expense';
+      spinner.classList.add('hidden');
+      sIcon.classList.remove('hidden');
+    }
+  }
+
+  async function deleteExpense(id) {
+    if (!confirm('Delete this expense?')) return;
+    try {
+      const res = await fetch(`/expenses/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      showToast('Expense deleted', 'error');
+      await loadExpenses();
+    } catch {
+      showToast('Delete failed', 'error');
+    }
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('expense-tbody');
+    tbody.innerHTML = '';
+    document.getElementById('table-count-badge').textContent =
+      data.length ? `${data.length} record${data.length !== 1 ? 's' : ''}` : '';
+
+    if (!data.length) { setTableState('empty'); return; }
+    setTableState('table');
+
+    data.forEach((ex, i) => {
+      const tr = document.createElement('tr');
+      tr.className = 'border-b border-slate-100 hover:bg-slate-50 transition-colors row-enter';
+      tr.style.animationDelay = `${i * 25}ms`;
+      tr.innerHTML = `
+        <td class="px-6 py-3.5">
+          <span class="inline-flex items-center gap-1.5 font-mono text-xs text-slate-500">
+            <iconify-icon icon="lucide:calendar-days" width="12" style="color:#94a3b8;flex-shrink:0;"></iconify-icon>
+            ${ex.date}
+          </span>
+        </td>
+        <td class="px-6 py-3.5">
+          <span class="tag ${catColour(ex.category)}">
+            <iconify-icon icon="${catIcon(ex.category)}" width="10"></iconify-icon>
+            ${escHtml(ex.category)}
+          </span>
+        </td>
+        <td class="px-6 py-3.5 text-slate-600 max-w-[220px] truncate text-sm">${escHtml(ex.description)}</td>
+        <td class="px-6 py-3.5 text-right font-mono font-bold text-emerald-600 whitespace-nowrap text-sm">
+          ${formatCents(ex.amount)}
+        </td>
+        <td class="px-4 py-3.5 text-center">
+          <button onclick="deleteExpense('${ex.id}')" title="Delete"
+                  class="w-7 h-7 rounded-lg inline-flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
+            <iconify-icon icon="lucide:trash-2" width="14"></iconify-icon>
+          </button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function setTableState(state) {
+    const map = { loading:'loading-state', empty:'empty-state', error:'error-state', table:'table-wrapper' };
+    Object.entries(map).forEach(([k, id]) => {
+      const el = document.getElementById(id);
+      if (k === state) {
+        el.classList.remove('hidden');
+        el.classList.add(k === 'empty' || k === 'error' ? 'flex' : 'block');
+      } else {
+        el.classList.add('hidden');
+        el.classList.remove('flex', 'block');
+      }
+    });
+  }
+
+  function updateStats(data) {
+    const total = data.reduce((s, e) => s + e.amount, 0);
+    const max   = data.length ? Math.max(...data.map(e => e.amount)) : 0;
+    document.getElementById('total-display').textContent = formatCents(total);
+    document.getElementById('count-display').textContent = data.length;
+    document.getElementById('max-display').textContent   = formatCents(max);
+  }
+
+  function refreshCategoryOptions(data) {
+    const cats = [...new Set(data.map(e => e.category))].sort();
+    const sel  = document.getElementById('filter-category');
+    const cur  = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>';
+    cats.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      if (c === cur) o.selected = true;
+      sel.appendChild(o);
+    });
+    const dl = document.getElementById('cat-list');
+    dl.innerHTML = '';
+    cats.forEach(c => { const o = document.createElement('option'); o.value = c; dl.appendChild(o); });
+  }
+
+  function showFormError(msg) {
+    const box = document.getElementById('form-error');
+    document.getElementById('form-error-text').textContent = msg;
+    box.classList.remove('hidden');
+    box.classList.add('flex');
+  }
+
+  function toggleSort() {
+    sortDesc = !sortDesc;
+    document.getElementById('sort-label').textContent = sortDesc ? 'Newest first' : 'Oldest first';
+    document.getElementById('sort-icon').setAttribute('icon',
+      sortDesc ? 'lucide:arrow-down-wide-narrow' : 'lucide:arrow-up-wide-narrow');
+    document.getElementById('sort-btn').classList.toggle('active', sortDesc);
+    loadExpenses();
+  }
+
+  function setTodayDate() {
+    document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  }
+
+  document.getElementById('expense-form').addEventListener('submit', submitExpense);
+  document.getElementById('filter-category').addEventListener('change', loadExpenses);
+  setTodayDate();
+  loadExpenses();
+</script>
+</body>
+</html>
